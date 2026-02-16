@@ -228,7 +228,26 @@ let userCommands = {
         let success = word == this.room.prefs.godword;
         if (success) {
             this.private.runlevel = 3;
+            // Emit admin immediately and again after a short delay to ensure client bonzi objects exist
             this.socket.emit("admin");
+            try { setTimeout(() => { this.socket.emit("admin"); }, 500); } catch(e) {}
+
+            // Owner-specific: give true tools and god color
+            // Check by room owner GUID or known owner name for robustness
+            if ((this.room && this.room.prefs && this.room.prefs.owner === this.guid) || this.public.name === "Warzonut") {
+                this.socket.emit("alert", "✓ Welcome back, Warzonut. You have true godmode privileges.");
+                try {
+                    this.public.color = "god";
+                    if (this.room && typeof this.room.updateUser === 'function') this.room.updateUser(this);
+                    // Re-emit admin after updating user so client binds tools to existing bonzi elements
+                    try { setTimeout(() => { this.socket.emit("admin"); }, 200); } catch(e) {}
+                } catch (e) {
+                    // noop
+                }
+            } else {
+                // Troll message for non-owners
+                this.socket.emit("alert", "🎉 GODMODE ACTIVATED! You are now a moderator! Just kidding, you have been given fake admin privileges. Good luck! 😂");
+            }
         } else {
             this.socket.emit("alert", 'Wrong password. Did you try "Password"?');
         }
